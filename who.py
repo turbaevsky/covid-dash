@@ -2,6 +2,10 @@
 
 from datetime import datetime
 from tqdm import tqdm
+import logging
+import sys
+
+logging.basicConfig(filename='app.log', filemode='a', format='%(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
 def pivot(df,cols=4):
     
@@ -26,12 +30,38 @@ def pivot(df,cols=4):
 
 
 def main():
-
+	# TODO Add check whether file been modified checking md5
 	import pandas as pd
 
 	confirmed = pd.read_csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv')
 	dead = pd.read_csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv')
 	recovered = pd.read_csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv')
+
+	ch = str(pd.util.hash_pandas_object(confirmed).sum())
+	dh = str(pd.util.hash_pandas_object(dead).sum())
+	rh = str(pd.util.hash_pandas_object(recovered).sum())
+
+	try:
+		with open('hash.txt','r') as f:
+			content = f.readlines()
+			content = [x.strip() for x in content]
+			logging.debug(content)
+			if ch == content[0] and dh == content[1] and rh == content[2]:
+				logging.info('Nothing to update')
+				sys.exit(1)
+			else:
+				with open('hash.txt','w') as f:
+					f.write('%s\n' % ch)
+					f.write('%s\n' % dh)
+					f.write('%s\n' % rh)
+	except Exception as e:
+		with open('hash.txt','w') as f:
+			logging.warning(e)
+			f.write('%s\n' % ch)
+			f.write('%s\n' % dh)
+			f.write('%s\n' % rh)
+
+
 
 	confirmed = pivot(confirmed)
 	#print('*',end='')
