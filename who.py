@@ -9,7 +9,7 @@ datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
 
 def pivot(df):
-    df = df.fillna('main')
+    df = df.fillna({'Province/State':'main'}).fillna(0)
     df = df.pivot_table(columns=['Province/State','Country/Region','Lat','Long'])
     df = df.reset_index()
     df['Date'] = df.level_0.apply(lambda x:(datetime.strptime(x,'%m/%d/%y').strftime("%Y-%m-%d")))
@@ -63,11 +63,12 @@ def main():
 
 	data = confirmed.merge(recovered, on=['Date','Province/State','Country/Region'], how='left').drop(columns=['Lat_y','Long_y','Lat_x','Long_x'])
 	data = data.merge(dead, on=['Date','Province/State','Country/Region'], how='left')#.drop(columns=['Lat','Long'])
-	data.fillna({'Province/State':'main','Dead':0,'Active':0,'Recovered':0,'Confirmed':0},inplace=True)
+	#data.fillna({'Province/State':'main','Dead':0,'Active':0,'Recovered':0,'Confirmed':0},inplace=True)
 	data['Active'] = data.Confirmed-data.Recovered-data.Dead
 	data['data'] = data.Date.map(lambda x : (datetime.strptime(x, "%Y-%m-%d") - datetime.strptime("2020-01-01", "%Y-%m-%d")).days)
 
 	data.to_csv('daily.csv')
+	logging.info('File updated')
 
 
 if __name__ == '__main__':

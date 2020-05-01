@@ -19,9 +19,8 @@ import matplotlib.pyplot as plt
 import math
 import logging
 
-#logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
-#logging.basicConfig(level=logging.DEBUG)
-#logging.info('Start')
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+datefmt='%d-%b-%y %H:%M:%S', level=logging.DEBUG)
 
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -51,7 +50,8 @@ def plot(x,y,p):
     cum = list(y)
     x = list(x)
     y = [int(y[i]-y[i-1]) if i!=0 else y[0] for i in range(0,len(y))]
-
+    y = [a if a>0 else 0 for a in y]
+    logging.debug('y input for plot is %s' % str(y))
     # Cumulative
     fitC = curve_fit(logistic_model,x,cum,bounds=(0,[10,200,p]),maxfev=1e5)
     errorsC = [np.sqrt(fitC[1][i][i]) for i in [0,1,2]]
@@ -70,7 +70,7 @@ def plot(x,y,p):
         #from scipy.integrate import quad
         #I = quad(logistic, mu-dev3, mu+dev3, args=(mu, sigma, mult))
         p = pop
-        logging.debug('fit: %s' % str(fit))
+        #logging.debug('fit: %s' % str(fit))
         errors = [np.sqrt(fit[1][i][i]) for i in [0,1,2]]
 
 
@@ -94,9 +94,11 @@ def plot(x,y,p):
 
     Y = [int(logistic(i,fit[0][0],fit[0][1],fit[0][2])) for i in x+pred_x]
     
-    txt = 'The  peak is expected on %.10s +/- %d days  with %d people affected at the moment of the peak. ' \
+    txt = 'The peak is expected on %.10s +/- %d days  with %d people affected at the moment of the peak. ' \
 % (datetime.strptime("2020-01-01", "%Y-%m-%d") + timedelta(days=fit[0][0]), errors[0], max(Y))
-    txt += 'The expected number of affected people \n at the given period end is %d +/- %d\n' % (fit[0][2],errors[2])
+    txt += '\nThe end of period (when 99.7 percent will be covered by curve) is expected on %.10s +/- %d days.' \
+    % (datetime.strptime("2020-01-01", "%Y-%m-%d") + timedelta(days=(mu+dev3)), errors[0])
+    txt += '\nThe expected number of affected people \n at the given period end is %d +/- %d\n' % (fit[0][2],errors[2])
     #txt += 'The expected end is %.10s\n' % (datetime.strptime("2020-01-01", "%Y-%m-%d") + timedelta(days=fit[0][0]+fit[0][1]**2*math.pi**2/3))
 
     #last = y.tail(1).CMODateCount.values[0]
@@ -112,7 +114,7 @@ def plot(x,y,p):
 
 
 app.layout = html.Div(children=[
-    html.A(children='Main Site', href='http://3.134.253.206'),
+    html.A(children='Main Site', href='https://livedata.link'),
     html.Div(),
     html.A(children='Contact', href='mailto:turbaevsky@gmail.com'),
     html.H1(children='COVID Forecast'),
@@ -168,6 +170,7 @@ app.layout = html.Div(children=[
 def st(country):
     df=load()[0]
     lst = df[df['Country/Region']==country]['Province/State'].drop_duplicates().values
+    logging.debug('Countries = %s' % lst)
     options=[{'label': i, 'value': i} for i in lst]
     return options or None
 
@@ -186,6 +189,7 @@ def chart(radio,country,state,display):
     if radio=='who':
         df=load()[0]
         df = df[(df['Country/Region']==country) & (df['Province/State']==state)]
+        logging.debug('df = %s' % df)
         pop = pd.read_csv('population.csv') # population
         try:
             p = int(pop[pop['Country Name']==country]['2018'].values[0])
@@ -197,25 +201,15 @@ def chart(radio,country,state,display):
         #cn=[{'label': i, 'value': i} for i in load()[1]]
         cn, st = False, False
 
-    else:
-        # read data from gov.uk
-        url = 'https://www.arcgis.com/sharing/rest/content/items/e5fd11150d274bebaaf8fe2a7a2bda11/data' #daily
-        daily = pd.read_excel(url, header=0)
-        date = daily['DateVal']
-        FMT = '%Y-%m-%d'
-        daily['data'] = date.map(lambda x : (x - datetime.strptime("2020-01-01", FMT)).days)
-        daily = daily.drop(columns=['CMODateCount','DailyDeaths'])
-        daily.columns=['Date','Confirmed','Dead','data']
-        df = daily.fillna(0)
-        p = 67e6
-        options=[{'label': i, 'value': i} for i in ['Infected', 'Dead']]
-        cn, st = True, True
-
     X = df.data.apply(int).values
     Y = df.Active.values if display=='Active' else df.Confirmed.values if display=='Infected' else \
         df.Recovered.values if display=='Recovered' else df.Dead.values
 
+    logging.debug('Y = %s' % Y)
+
     _, yy, YY, xx, text  = plot(X,Y,p)
+
+    logging.debug('y for plotting is %s' % yy)
 
     figure={
     'data': [
