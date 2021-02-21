@@ -3,19 +3,47 @@
 from datetime import datetime
 import logging
 import sys
+import pandas as pd
 
-logging.basicConfig(filename='app.log', filemode='a', format='%(asctime)s - %(levelname)s - %(message)s',
-datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+datefmt='%d-%b-%y %H:%M:%S', level=logging.DEBUG)
 
-
+'''
 def pivot(df):
     df = df.fillna({'Province/State':'main'}).fillna(0)
     df = df.pivot_table(columns=['Province/State','Country/Region','Lat','Long'])
     df = df.reset_index()
+    logging.debug(df.columns())
+    logging.debug(df.tail())
     df['Date'] = df.level_0.apply(lambda x:(datetime.strptime(x,'%m/%d/%y').strftime("%Y-%m-%d")))
     df.drop(columns=['level_0'], inplace=True)
     df.columns = ['Province/State','Country/Region','Lat','Long','value','Date']
     return df
+'''
+
+def pivot(ddf):
+    ddf = ddf.fillna({'Province/State':'main'}).fillna(0)
+    col = ddf.columns[4:].tolist()
+    d = {'Province/State':[], 'Country/Region':[], 'Lat':[], 'Long':[], 'Value':[], 'Date':[]}
+    d = pd.DataFrame(d)
+    for n in range(len(ddf.index)):
+        print(n, end='\x1b[1K\r')
+        for i in range(len(col)):
+            pos = 4 + i
+            #yr = int(col[i][:4])
+            #val = float('{:.1f}'.format(float(ddf.iloc[n,pos]))) if ddf.iloc[n,pos] != '..' else 0
+            # val might be replace with None then dropna()
+            dt = datetime.strptime(col[i],'%m/%d/%y').strftime("%Y-%m-%d")
+            ln = {'Province/State':[ddf.iloc[n,0]],
+                  'Country/Region':[ddf.iloc[n,1]],
+                  'Lat':[ddf.iloc[n,2]],
+                  'Long':[ddf.iloc[n,3]],
+                  'Value':[ddf.iloc[n,pos]],
+                  'Date':[dt]
+                    }
+            l = pd.DataFrame(ln)
+            d = d.append(l, ignore_index=True)
+    return d
 
 
 def main():
@@ -34,7 +62,7 @@ def main():
 			content = f.readlines()
 			content = [x.strip() for x in content]
 			logging.debug(content)
-			if ch == content[0] and dh == content[1] and rh == content[2]:
+			if ch == content[0] and dh == content[1] and rh == content[2]: ################
 				logging.info('Nothing to update')
 				sys.exit(1)
 			else:
